@@ -8,6 +8,7 @@ FINETUNE_VERSION="alfworld-gpt4-45k"
 deepspeed --include localhost:0,1,2 \
     LLaVA/llava/train/train_mem.py \
     --deepspeed ./scripts/zero3.json \
+    --lora_enable True \
     --model_name_or_path liuhaotian/llava-v1.6-mistral-7b \
     --version v1 \
     --data_path ./sft-data/$FINETUNE_VERSION.json \
@@ -20,11 +21,11 @@ deepspeed --include localhost:0,1,2 \
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir ./checkpoints/$MODEL_VERSION-$FINETUNE_VERSION \
+    --output_dir ./checkpoints/$MODEL_VERSION-$FINETUNE_VERSION-lora \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 8 \
-    --per_device_eval_batch_size 8 \
-    --gradient_accumulation_steps 2 \
+    --per_device_train_batch_size 16 \
+    --per_device_eval_batch_size 16 \
+    --gradient_accumulation_steps 4 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 50000 \
@@ -39,5 +40,5 @@ deepspeed --include localhost:0,1,2 \
     --gradient_checkpointing True \
     --dataloader_num_workers 4 \
     --lazy_preprocess True \
-    --run_name "$MODEL_VERSION-$FINETUNE_VERSION" \
+    --run_name "$MODEL_VERSION-$FINETUNE_VERSION-lora" \
     --report_to wandb 

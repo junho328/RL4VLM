@@ -37,7 +37,6 @@ from llava.mm_utils import tokenizer_image_token
 
 from PIL import Image
 
-
 local_rank = None
 
 
@@ -48,7 +47,6 @@ def rank0_print(*args):
 
 from packaging import version
 IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= version.parse('0.14')
-
 
 @dataclass
 class ModelArguments:
@@ -793,6 +791,58 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
+
+    # Debugging
+    print(f"Model path: {model_args.model_name_or_path}")
+
+    # Wandb initialization
+    if training_args.local_rank in [-1, 0]:  # Main process or single-node setup
+        import wandb
+
+        config = {
+        "MODEL_VERSION": "llava-v1.6-mistral-7b",
+        "FINETUNE_VERSION": "alfworld-gpt4-45k",
+        "deepspeed_config": "./scripts/zero3.json",
+        "model_name_or_path": model_args.model_name_or_path,
+        "version": model_args.version,
+        "data_path": data_args.data_path,
+        "image_folder": data_args.image_folder,
+        "vision_tower": model_args.vision_tower,
+        "mm_projector_type": model_args.mm_projector_type,
+        "tune_mm_mlp_adapter": model_args.tune_mm_mlp_adapter,
+        "mm_vision_select_layer": model_args.mm_vision_select_layer,
+        "mm_use_im_start_end": model_args.mm_use_im_start_end,
+        "mm_use_im_patch_token": model_args.mm_use_im_patch_token,
+        "image_aspect_ratio": data_args.image_aspect_ratio,
+        "group_by_modality_length": training_args.group_by_modality_length,
+        "bf16": training_args.bf16,
+        "output_dir": training_args.output_dir,
+        "num_train_epochs": training_args.num_train_epochs,
+        "per_device_train_batch_size": training_args.per_device_train_batch_size,
+        "per_device_eval_batch_size": training_args.per_device_eval_batch_size,
+        "gradient_accumulation_steps": training_args.gradient_accumulation_steps,
+        "evaluation_strategy": training_args.evaluation_strategy,
+        "save_strategy": training_args.save_strategy,
+        "save_steps": training_args.save_steps,
+        "save_total_limit": training_args.save_total_limit,
+        "learning_rate": training_args.learning_rate,
+        "weight_decay": training_args.weight_decay,
+        "warmup_ratio": training_args.warmup_ratio,
+        "lr_scheduler_type": training_args.lr_scheduler_type,
+        "logging_steps": training_args.logging_steps,
+        "tf32": training_args.tf32,
+        "model_max_length": training_args.model_max_length,
+        "gradient_checkpointing": training_args.gradient_checkpointing,
+        "dataloader_num_workers": training_args.dataloader_num_workers,
+        "lazy_preprocess": data_args.lazy_preprocess,
+        "run_name": training_args.run_name,
+        }
+
+        wandb.init(
+            project="RL4VLM",  # Replace with your project name
+            name=training_args.run_name if hasattr(training_args, 'run_name') else None,
+            config=config  # Log training arguments
+        )
 
     bnb_model_from_pretrained_args = {}
     if training_args.bits in [4, 8]:
